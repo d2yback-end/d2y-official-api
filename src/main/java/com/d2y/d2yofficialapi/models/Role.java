@@ -1,54 +1,31 @@
 package com.d2y.d2yofficialapi.models;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+import jakarta.persistence.*;
+import lombok.*;
 
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.io.Serializable;
+import java.util.Collection;
 
-import static com.d2y.d2yofficialapi.models.Permission.ADMIN_READ;
-import static com.d2y.d2yofficialapi.models.Permission.ADMIN_UPDATE;
-import static com.d2y.d2yofficialapi.models.Permission.ADMIN_DELETE;
-import static com.d2y.d2yofficialapi.models.Permission.ADMIN_CREATE;
-import static com.d2y.d2yofficialapi.models.Permission.MANAGER_READ;
-import static com.d2y.d2yofficialapi.models.Permission.MANAGER_UPDATE;
-import static com.d2y.d2yofficialapi.models.Permission.MANAGER_DELETE;
-import static com.d2y.d2yofficialapi.models.Permission.MANAGER_CREATE;
+/**
+ * @Data it will error while fetch user from db
+ *       remove @Data and add @Getter @Setter and no need to add @ToString
+ */
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@Entity
+@Table(name = "tbl_role")
+public class Role implements Serializable {
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  private Long id;
 
-@RequiredArgsConstructor
-public enum Role {
+  @Column(name = "name", unique = true, nullable = false)
+  private String name;
 
-  USER(Collections.emptySet()),
-  ADMIN(
-      Set.of(
-          ADMIN_READ,
-          ADMIN_UPDATE,
-          ADMIN_DELETE,
-          ADMIN_CREATE,
-          MANAGER_READ,
-          MANAGER_UPDATE,
-          MANAGER_DELETE,
-          MANAGER_CREATE)),
-  MANAGER(
-      Set.of(
-          MANAGER_READ,
-          MANAGER_UPDATE,
-          MANAGER_DELETE,
-          MANAGER_CREATE));
-
-  @Getter
-  private final Set<Permission> permissions;
-
-  public List<SimpleGrantedAuthority> getAuthorities() {
-    List<SimpleGrantedAuthority> authorities = getPermissions()
-        .stream()
-        .map(permission -> new SimpleGrantedAuthority(permission.getPermission()))
-        .collect(Collectors.toList());
-    authorities.add(new SimpleGrantedAuthority("ROLE_" + this.name()));
-    return authorities;
-  }
+  @ManyToMany(mappedBy = "roles")
+  private Collection<User> users;
 }
