@@ -1,0 +1,28 @@
+server:
+  port: 5000
+
+spring:
+  application:
+    name: d2y-official-api
+  datasource:
+    url: jdbc:postgresql://localhost:5432/d2y-official-api
+    password: YOUR_PASSWORD
+    username: YOUR_USERNAME
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: true
+
+# JWT CONFIG
+# Key secret generate https://www.allkeysgenerator.com/Random/Security-Encryption-Key-Generator.aspx
+# expiration 3600 seconds equal 1 hour
+jwt:
+  url: "/authorization"
+  header: "Authorization"
+  prefix: "Bearer "
+  expiration: 86400
+  secret: "YOUR_SECRET_KEY"
