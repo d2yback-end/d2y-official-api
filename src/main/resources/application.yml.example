@@ -16,13 +16,19 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
     show-sql: true
+  mail:
+    host: sandbox.smtp.mailtrap.io
+    port: 2525
+    password: YOUR_PASSWORD
+    username: YOUR_USERNAME
+    protocol: smtp
 
 # JWT CONFIG
 # Key secret generate https://www.allkeysgenerator.com/Random/Security-Encryption-Key-Generator.aspx
-# expiration 3600 seconds equal 1 hour
 jwt:
   url: "/authorization"
   header: "Authorization"
   prefix: "Bearer "
-  expiration: 86400
+  expiration: 86400000 #1 Day
+  refresh-expiration: 604800000 #7 Day
   secret: "YOUR_SECRET_KEY"
