@@ -11,14 +11,13 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-
-import io.jsonwebtoken.security.SignatureException;
 import org.springframework.stereotype.Service;
 
 import com.d2y.d2yofficialapi.exceptions.CustomMessageException;
 import com.d2y.d2yofficialapi.helpers.JwtConfig;
 import com.d2y.d2yofficialapi.interfaces.JwtServiceInterface;
 import com.d2y.d2yofficialapi.security.CustomUserDetail;
+import com.d2y.d2yofficialapi.security.CustomUserDetailService;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -29,6 +28,7 @@ import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.UnsupportedJwtException;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,6 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RequiredArgsConstructor
 public class JwtService extends JwtConfig implements JwtServiceInterface {
+
+  private final CustomUserDetailService userDetailService;
 
   @Override
   public String extractUsername(String token) {
@@ -137,9 +139,11 @@ public class JwtService extends JwtConfig implements JwtServiceInterface {
   }
 
   @Override
-  public boolean isTokenValid(String token, UserDetails userDetails) {
+  public boolean isTokenValid(String token) {
     final String username = extractUsername(token);
-    return (username.equals(userDetails.getUsername())) && !isTokenExpired(token);
+
+    UserDetails userDetails = userDetailService.loadUserByUsername(username);
+    return userDetails != null;
   }
 
   @Override

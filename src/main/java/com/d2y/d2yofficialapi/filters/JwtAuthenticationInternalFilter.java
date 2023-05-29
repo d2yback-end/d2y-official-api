@@ -1,21 +1,21 @@
 package com.d2y.d2yofficialapi.filters;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.d2y.d2yofficialapi.helpers.JwtConfig;
-import com.d2y.d2yofficialapi.repositories.TokenRepository;
-import com.d2y.d2yofficialapi.security.CustomUserDetailService;
 import com.d2y.d2yofficialapi.services.JwtService;
 import com.d2y.d2yofficialapi.utils.CustomMessageExceptionUtils;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,58 +30,46 @@ public class JwtAuthenticationInternalFilter extends OncePerRequestFilter {
   private final JwtService jwtService;
   private final ObjectMapper objectMapper;
   private final JwtConfig jwtConfig;
-  private final CustomUserDetailService userDetailsService;
-  private final TokenRepository tokenRepository;
 
   @Override
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
       throws ServletException, IOException {
 
-    if (request.getServletPath().contains(jwtConfig.getUrl())) {
-      filterChain.doFilter(request, response);
-      return;
-    }
+    var accessToken = request.getHeader(jwtConfig.getHeader());
+    log.info("Do filter uri {}", request.getRequestURI());
 
-    final String authHeader = request.getHeader(jwtConfig.getHeader());
-    final String jwt;
-    final String userEmail;
+    if (accessToken != null && !accessToken.isBlank() && accessToken.startsWith(jwtConfig.getPrefix())) {
+      accessToken = accessToken.substring((jwtConfig.getPrefix()).length());
 
-    if (authHeader == null || !authHeader.startsWith(jwtConfig.getPrefix())) {
-      filterChain.doFilter(request, response);
-      return;
-    }
+      try {
+        if (jwtService.isTokenValid(accessToken)) {
+          Claims claims = jwtService.extractAllClaims(accessToken);
+          var username = claims.getSubject();
 
-    jwt = authHeader.split(" ")[1].trim();
-    userEmail = jwtService.extractUsername(jwt);
-
-    try {
-      if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-        UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-        var isTokenValid = tokenRepository.findByToken(jwt)
-            .map(token -> !token.isExpired() && !token.isRevoked())
-            .orElse(false);
-
-        if (jwtService.isTokenValid(jwt, userDetails) && isTokenValid) {
-          UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-              userDetails,
-              null,
-              userDetails.getAuthorities());
-
-          authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-          SecurityContextHolder.getContext().setAuthentication(authToken);
+          List<String> authorities = claims.get("authorities", List.class);
+          if (username != null) {
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                username, null,
+                authorities.stream().map(SimpleGrantedAuthority::new)
+                    .collect(Collectors.toList()));
+            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+          }
         }
+      } catch (Exception ex) {
+        log.error("{}", ex.getLocalizedMessage());
+
+        var messageException = CustomMessageExceptionUtils.unauthorized();
+        var msgJson = objectMapper.writeValueAsString(messageException);
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.getWriter().write(msgJson);
+        return;
       }
-    } catch (Exception exception) {
-      log.error("{}", exception.getLocalizedMessage());
-
-      var messageException = CustomMessageExceptionUtils.unauthorized();
-      var msgJson = objectMapper.writeValueAsString(messageException);
-
-      response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-      response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-      response.getWriter().write(msgJson);
-      return;
     }
+
+    log.info("Do filter {}", request.getRequestURI());
+    filterChain.doFilter(request, response);
+
   }
 
 }
