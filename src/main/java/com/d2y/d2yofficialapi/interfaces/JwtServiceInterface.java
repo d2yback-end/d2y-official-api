@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.springframework.security.core.userdetails.UserDetails;
+
 import com.d2y.d2yofficialapi.security.CustomUserDetail;
 
 import io.jsonwebtoken.Claims;
@@ -35,7 +37,7 @@ public interface JwtServiceInterface {
 
   Date extractExpirationDate(String token);
 
-  boolean isTokenValid(String token, CustomUserDetail customUserDetail);
+  boolean isTokenValid(String token, UserDetails userDetails);
 
   boolean isTokenExpired(String token);
 
