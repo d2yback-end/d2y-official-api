@@ -7,6 +7,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.oauth2.server.resource.OAuth2ResourceServerConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -52,16 +53,24 @@ public class SecurityConfiguration extends JwtConfig {
     managerBuilder.userDetailsService(customUserDetailService).passwordEncoder(passwordEncoder());
     AuthenticationManager authenticationManager = managerBuilder.build();
 
-    httpSecurity
-        .cors()
-        .and()
-        .csrf()
-        .disable()
-        .authorizeHttpRequests()
-        .requestMatchers("/api/v1/auth/**").permitAll()
-        .requestMatchers("/api/v1/admin/**").hasAuthority("ADMIN")
-        .anyRequest().authenticated()
-        .and()
+    httpSecurity.cors().and()
+        .csrf().disable()
+        .authorizeHttpRequests(authorize -> authorize
+            .requestMatchers("/api/v1/auth/**")
+            .permitAll()
+            .requestMatchers("/api/v1/posts/")
+            .permitAll()
+            .requestMatchers("/api/v1/posts/**")
+            .permitAll()
+            .requestMatchers("/v2/api-docs",
+                "/configuration/ui",
+                "/swagger-resources/**",
+                "/configuration/security",
+                "/swagger-ui.html",
+                "/webjars/**")
+            .permitAll()
+            .anyRequest()
+            .authenticated())
         .authenticationManager(authenticationManager)
         .sessionManagement()
         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
