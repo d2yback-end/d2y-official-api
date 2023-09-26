@@ -33,5 +33,6 @@ jwt.header=Authorization
 jwt.prefix=Bearer
 jwt.expiration=86400000
 jwt.refresh-expiration=604800000
-jwt.secret=secret
+jwt.public.key=classpath:app.pub
+jwt.private.key=classpath:app.key
 

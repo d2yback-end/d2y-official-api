@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+  <head>
+    <title>Verifikasi Email Anda</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        text-align: center;
+      }
+      .container {
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        margin: 20px auto;
+        max-width: 600px;
+      }
+      h1 {
+        color: #333;
+      }
+      p {
+        font-size: 18px;
+        line-height: 1.5;
+        color: #555;
+      }
+      .button {
+        display: inline-block;
+        padding: 10px 20px;
+        margin: 10px 0;
+        background-color: #007bff;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 3px;
+      }
+      .button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Email Verification</h1>
+      <p>Hello, <span th:text="${username}" style="text-transform: capitalize"></span>!</p>
+      <p>
+        Thank you for registering on our website. We are delighted to have you join us. To proceed, we need you to
+        verify your email address. Please click the button below to verify your email:
+      </p>
+      <a class="button" th:href="@{${verificationUrl}}">Verify My Email</a>
+      <p>If you did not register for this, you can ignore this message. Your email will remain unverified.</p>
+      <p>Thank you,</p>
+      <p>D2Y OFFICIAL</p>
+    </div>
+  </body>
+</html>
