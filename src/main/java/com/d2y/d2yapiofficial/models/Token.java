@@ -39,6 +39,9 @@ public class Token {
   @Column(name = "expiry_date")
   private Timestamp expiryDate;
 
+  @Column(name = "is_expired")
+  private boolean expired;
+
   @Column(name = "created_on")
   private Timestamp createdOn;
 }

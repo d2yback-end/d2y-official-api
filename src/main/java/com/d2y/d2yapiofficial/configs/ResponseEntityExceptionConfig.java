@@ -3,8 +3,9 @@ package com.d2y.d2yapiofficial.configs;
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
 import javax.validation.ValidationException;
-import javax.ws.rs.ForbiddenException;
 
+import com.d2y.d2yapiofficial.exceptions.ForbiddenException;
+import com.d2y.d2yapiofficial.exceptions.UnauthorizedException;
 import com.toedter.spring.hateoas.jsonapi.JsonApiError;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,10 +52,10 @@ public class ResponseEntityExceptionConfig extends ResponseEntityExceptionHandle
 
     if (ex instanceof EntityNotFoundException) {
       status = HttpStatus.NOT_FOUND;
-    } else if (ex instanceof ValidationException) {
+    } else if (ex instanceof ValidationException || ex instanceof EntityExistsException) {
       status = HttpStatus.BAD_REQUEST;
-    } else if (ex instanceof EntityExistsException) {
-      status = HttpStatus.BAD_REQUEST;
+    } else if (ex instanceof UnauthorizedException) {
+      status = HttpStatus.UNAUTHORIZED;
     } else if (ex instanceof ForbiddenException) {
       status = HttpStatus.FORBIDDEN;
     } else {

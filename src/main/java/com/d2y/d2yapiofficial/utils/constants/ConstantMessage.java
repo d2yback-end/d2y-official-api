@@ -18,7 +18,7 @@ public class ConstantMessage {
   public static final String NOTIFICATION_EMAIL_SUCCESS = "Successfully sent an email to User";
   public static final String EMAIL_NOTIF_SENT = "Notification email was sent!";
   public static final String EXCEPTION_EMAIL_SENT = "Exception occurred when sending mail to ";
-  public static final String REGISTER_SUCCESS = "Register successful. Please check your email to verify your account";
+  public static final String REGISTER_SUCCESS = "Registration successful. A verification email has been sent to your email address. Please check your email to verify your account. The verification token will expire in 24 hours";
   public static final String ACTIVATED_SUCCESS = "Congratulations, Your Account Activation Was Successful";
   public static final String REFRESH_TOKEN_DELETED = "Refresh Token Deleted Successfully!";
 }
