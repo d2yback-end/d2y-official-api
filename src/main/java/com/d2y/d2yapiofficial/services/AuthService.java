@@ -1,6 +1,7 @@
 package com.d2y.d2yapiofficial.services;
 
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -22,6 +23,7 @@ import com.d2y.d2yapiofficial.dto.AuthResponse;
 import com.d2y.d2yapiofficial.dto.LoginRequest;
 import com.d2y.d2yapiofficial.dto.RefreshTokenRequest;
 import com.d2y.d2yapiofficial.dto.RegisterRequest;
+import com.d2y.d2yapiofficial.exceptions.ForbiddenException;
 import com.d2y.d2yapiofficial.models.NotificationEmail;
 import com.d2y.d2yapiofficial.models.Token;
 import com.d2y.d2yapiofficial.models.User;
@@ -48,28 +50,9 @@ public class AuthService {
   @Transactional
   public void registerUser(RegisterRequest registrationDto) {
     try {
-      if (userRepository.existsByEmail(registrationDto.getEmail())) {
-        throw new EntityExistsException("Email already exists!");
-      }
+      validateRegistrationInput(registrationDto);
 
-      if (registrationDto.getPassword().length() < 8) {
-        throw new ValidationException("Password must be at least 8 characters long.");
-      }
-
-      if (!isStrongPassword(registrationDto.getPassword())) {
-        throw new ValidationException(
-            "Password must contain a combination of uppercase letters, lowercase letters, numbers, and special characters.");
-      }
-
-      User user = new User();
-      user.setUsername(registrationDto.getUsername());
-      user.setEmail(registrationDto.getEmail());
-      user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
-      user.setCreatedOn(new Timestamp(System.currentTimeMillis()));
-      user.setLastModifiedOn(new Timestamp(System.currentTimeMillis()));
-      user.setActive(true);
-      user.setEnabled(false);
-
+      User user = createUserFromRequest(registrationDto);
       user = userRepository.save(user);
 
       sendVerificationEmail(user);
@@ -83,6 +66,9 @@ public class AuthService {
   @Transactional
   public AuthResponse login(LoginRequest loginRequest) {
     try {
+      User user = getUserByEmail(loginRequest.getEmail());
+      validateUserEnabled(user, loginRequest);
+
       Authentication authenticate = authenticationManager
           .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
               loginRequest.getPassword()));
@@ -101,18 +87,54 @@ public class AuthService {
     }
   }
 
+  @Transactional
   public AuthResponse refreshToken(RefreshTokenRequest refreshTokenRequest) {
-    refreshTokenService.validateRefreshToken(refreshTokenRequest.getRefreshToken());
-    String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getEmail());
+    try {
+      refreshTokenService.validateRefreshToken(refreshTokenRequest.getRefreshToken());
+      String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getEmail());
 
-    return AuthResponse.builder()
-        .accessToken(token)
-        .refreshToken(refreshTokenService.generateRefreshToken().getToken())
-        .build();
+      return AuthResponse.builder()
+          .accessToken(token)
+          .refreshToken(refreshTokenService.generateRefreshToken().getToken())
+          .build();
+    } catch (Exception ex) {
+      log.info(ex.getMessage());
+      ex.printStackTrace();
+      throw ex;
+    }
+  }
+
+  // Function for register
+
+  private void validateRegistrationInput(RegisterRequest registrationDto) {
+    if (userRepository.existsByEmail(registrationDto.getEmail())) {
+      throw new EntityExistsException("Email already exists!");
+    }
+
+    if (registrationDto.getPassword().length() < 8) {
+      throw new ValidationException("Password must be at least 8 characters long.");
+    }
+
+    if (!isStrongPassword(registrationDto.getPassword())) {
+      throw new ValidationException(
+          "Password must contain a combination of uppercase letters, lowercase letters, numbers, and special characters.");
+    }
+  }
+
+  private User createUserFromRequest(RegisterRequest registrationDto) {
+    User user = new User();
+    user.setUsername(registrationDto.getUsername());
+    user.setEmail(registrationDto.getEmail());
+    user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
+    user.setCreatedOn(new Timestamp(System.currentTimeMillis()));
+    user.setLastModifiedOn(new Timestamp(System.currentTimeMillis()));
+    user.setActive(true);
+    user.setEnabled(false);
+    return user;
   }
 
   private boolean isStrongPassword(String password) {
-    return password.matches("^(?=.*[a-zA-Z0-9!@#$%^&*()_+=\\-\\[\\]{}\\/?.,><\\\\|]).+$");
+    return password.matches("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@#$%!*+=_^&\\-\\[\\]{}\\/?.,><\\\\|]).{8,}$");
   }
 
   private void sendVerificationEmail(User user) {
@@ -141,25 +163,60 @@ public class AuthService {
     verificationToken.setToken(token);
     verificationToken.setUser(user);
 
+    LocalDateTime now = LocalDateTime.now();
+    LocalDateTime expiryDateTime = now.plusHours(24);
+    verificationToken.setExpiryDate(Timestamp.valueOf(expiryDateTime));
+    verificationToken.setExpired(false);
+    verificationToken.setCreatedOn(new Timestamp(System.currentTimeMillis()));
+
     tokenRepository.save(verificationToken);
     return token;
   }
 
-  public void verifyAccount(String token) {
-    Optional<Token> verificationToken = tokenRepository.findByToken(token);
-    fetchUserAndEnable(verificationToken.orElseThrow(() -> new ValidationException("Invalid Verification Token")));
+  // Function for login
+
+  private User getUserByEmail(String email) {
+    return userRepository.findByEmail(email)
+        .orElseThrow(() -> new EntityNotFoundException("User not found"));
   }
 
-  private void fetchUserAndEnable(Token verificationToken) {
+  private void validateUserEnabled(User user, LoginRequest loginRequest) {
+    if (!user.isEnabled()) {
+      throw new ForbiddenException("Please check your email to verify your account.");
+    }
+
+    if (!isPasswordValid(loginRequest.getPassword(), user.getPassword())) {
+      throw new ValidationException("Invalid email or password.");
+    }
+  }
+
+  private boolean isPasswordValid(String rawPassword, String hashedPasswordFromDb) {
+    return passwordEncoder.matches(rawPassword, hashedPasswordFromDb);
+
+  }
+
+  public boolean verifyAccount(String token) {
+    Optional<Token> verificationToken = tokenRepository.findByToken(token);
+    return fetchUserAndEnable(
+        verificationToken.orElseThrow(() -> new ValidationException("Invalid Verification Token")));
+  }
+
+  private boolean fetchUserAndEnable(Token verificationToken) {
+    if (verificationToken.isExpired()) {
+      return false;
+    }
+
     Long userId = verificationToken.getUser().getUserId();
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     user.setEnabled(true);
     userRepository.save(user);
+    tokenRepository.delete(verificationToken);
+    return true;
   }
 
-  @Transactional()
+  @Transactional
   public User getCurrentUser() {
     Jwt principal = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return userRepository.findByEmail(principal.getSubject())

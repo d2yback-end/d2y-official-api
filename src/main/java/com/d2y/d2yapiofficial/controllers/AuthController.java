@@ -3,7 +3,6 @@ package com.d2y.d2yapiofficial.controllers;
 import javax.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,9 +43,15 @@ public class AuthController {
 
   @GetMapping("accountVerification/{token}")
   public ResponseEntity<Object> verifyAccount(@PathVariable String token) {
-    authService.verifyAccount(token);
-    return ResponseEntity.status(HttpStatus.OK)
-        .body("Congratulations, Your Account Activation Was Successful");
+    boolean isNotExpired = authService.verifyAccount(token);
+
+    if (isNotExpired) {
+      return ResponseEntity.status(HttpStatus.OK)
+          .body("Congratulations, Your Account Activation Was Successful");
+    } else {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+          .body("The token has expired. Please Login again!");
+    }
   }
 
   @PostMapping("/login")
