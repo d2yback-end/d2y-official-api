@@ -7,13 +7,17 @@ public class ConstantMessage {
 
   public static final String MESSAGE = "message";
   public static final String NOTIFICATION = "notification";
+  public static final String USER_ROLE = "User Role";
+  public static final String USER = "User";
+  public static final String ROLE_PRIVILEGE = "Role Privilege";
   public static final String REGISTER = "register";
   public static final String APP_SUCCESS_UPDATED = "application.success.updated";
   public static final String APP_SUCCESS_CREATED = "application.success.created";
+  public static final String APP_SUCCESS_DELETED = "application.success.deleted";
   public static final String USER_NOT_FOUND = "User Data Not Found!";
-  public static final String PROJECT_TYPE_NOT_FOUND = "Project Type Not Found!";
   public static final String ROLE_PROJECT_NOT_FOUND = "Role Project Data Not Found!";
   public static final String ROLE_NOT_FOUND = "Role Id Data Not Found!";
+  public static final String CATEGORY_CODE_NOT_FOUND = "Category Code Id Data Not Found!";
   public static final String ROLE_PRIVILEGE_NOT_FOUND = "Role Privilege Data Not Found!";
   public static final String NOTIFICATION_EMAIL_SUCCESS = "Successfully sent an email to User";
   public static final String EMAIL_NOTIF_SENT = "Notification email was sent!";

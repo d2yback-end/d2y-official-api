@@ -1,4 +1,4 @@
-package com.d2y.d2yapiofficial.dto;
+package com.d2y.d2yapiofficial.dto.user;
 
 import javax.persistence.Id;
 import lombok.AllArgsConstructor;

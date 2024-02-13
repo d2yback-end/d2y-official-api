@@ -41,13 +41,13 @@ public class UserRole {
   private Timestamp createdOn;
 
   @Column(name = "updated_on")
-  private Timestamp updateOn;
+  private Timestamp updatedOn;
 
   @Column(name = "created_by")
   private Long createdBy;
 
   @Column(name = "updated_by")
-  private Long updateBy;
+  private Long updatedBy;
 
   @Column(name = "is_active")
   private boolean active;

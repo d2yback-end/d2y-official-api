@@ -1,6 +1,9 @@
 package com.d2y.d2yapiofficial.models;
 
+import java.io.Serializable;
+import java.sql.Date;
 import java.sql.Timestamp;
+import java.time.LocalDate;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -20,7 +23,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "users")
-public class User {
+public class User implements Serializable {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "user_id")
@@ -35,19 +38,55 @@ public class User {
   @Column(name = "email")
   private String email;
 
-  @Column(name = "photo_profile")
+  @Column(name = "date_of_birth", nullable = true)
+  private Date dateOfBirth;
+
+  @Column(name = "phone_number", nullable = true)
+  private String phoneNumber;
+
+  @Column(name = "registration_date")
+  private Timestamp registrationDate;
+
+  @Column(name = "last_login")
+  private Timestamp lastLogin;
+
+  @Column(name = "photo_profile", nullable = true)
   private String photoProfile;
 
   @Column(name = "created_on")
   private Timestamp createdOn;
 
-  @Column(name = "last_modified_on")
-  private Timestamp lastModifiedOn;
+  @Column(name = "updated_on")
+  private Timestamp updatedOn;
 
   @Column(name = "is_active")
   private boolean active;
 
   @Column(name = "is_enable")
   private boolean enabled;
+
+  @Column(name = "bio", nullable = true)
+  private String bio;
+
+  @Column(name = "ig_account", nullable = true)
+  private String igAccount;
+
+  @Column(name = "twitter_account", nullable = true)
+  private String twitterAccount;
+
+  @Column(name = "fb_account", nullable = true)
+  private String fbAccount;
+
+  @Column(name = "yt_account", nullable = true)
+  private String ytAccount;
+
+  @Column(name = "address", nullable = true)
+  private String address;
+
+  @Column(name = "website", nullable = true)
+  private String website;
+
+  @Column(name = "gender", nullable = true)
+  private String gender;
 
 }

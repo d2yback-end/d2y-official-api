@@ -4,6 +4,7 @@ import java.sql.Timestamp;
 import java.util.Optional;
 import java.util.List;
 
+import com.d2y.d2yapiofficial.models.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.d2y.d2yapiofficial.models.Token;
@@ -15,5 +16,7 @@ public interface TokenRepository extends JpaRepository<Token, Long> {
   List<Token> findByExpiryDateBeforeAndExpiredIsFalse(Timestamp expiryDate);
 
   List<Token> findByExpiredIsTrue();
+
+  Optional<Token> findByUser(User user);
 
 }

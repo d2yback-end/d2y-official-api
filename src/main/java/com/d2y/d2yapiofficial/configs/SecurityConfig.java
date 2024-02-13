@@ -33,6 +33,7 @@ import java.security.interfaces.RSAPublicKey;
 
 @Configuration
 @RequiredArgsConstructor
+@SuppressWarnings("deprecation")
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
   private final UserDetailsService userDetailsService;
@@ -40,9 +41,10 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
   @Value("${jwt.public.key}")
   RSAPublicKey publicKey;
 
-  @Value("${jwt.private.key}")
-  RSAPrivateKey privateKey;
+  @Value("${jwt.secret.key}")
+  RSAPrivateKey secretKey;
 
+  @SuppressWarnings("deprecation")
   @Bean(BeanIds.AUTHENTICATION_MANAGER)
   @Override
   public AuthenticationManager authenticationManagerBean() throws Exception {
@@ -52,30 +54,30 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
   @Override
   public void configure(HttpSecurity httpSecurity) throws Exception {
     httpSecurity.cors().and()
-        .csrf().disable()
-        .authorizeHttpRequests(authorize -> authorize
-            .antMatchers("/api/v1/auth/**")
-            .permitAll()
-            .antMatchers("/v2/api-docs",
-                "/configuration/ui",
-                "/swagger-resources/**",
-                "/configuration/security",
-                "/swagger-ui.html",
-                "/webjars/**")
-            .permitAll()
-            .anyRequest()
-            .authenticated())
-        .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .exceptionHandling(exceptions -> exceptions
-            .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
-            .accessDeniedHandler(new BearerTokenAccessDeniedHandler()));
+            .csrf().disable()
+            .authorizeHttpRequests(authorize -> authorize
+                    .antMatchers("/api/v1/auth/**")
+                    .permitAll()
+                    .antMatchers("/v2/api-docs",
+                            "/configuration/ui",
+                            "/swagger-resources/**",
+                            "/configuration/security",
+                            "/swagger-ui.html",
+                            "/webjars/**")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated())
+            .oauth2ResourceServer(OAuth2ResourceServerConfigurer::jwt)
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .exceptionHandling(exceptions -> exceptions
+                    .authenticationEntryPoint(new BearerTokenAuthenticationEntryPoint())
+                    .accessDeniedHandler(new BearerTokenAccessDeniedHandler()));
   }
 
   @Override
   public void configure(AuthenticationManagerBuilder authenticationManagerBuilder) throws Exception {
     authenticationManagerBuilder.userDetailsService(userDetailsService)
-        .passwordEncoder(passwordEncoder());
+            .passwordEncoder(passwordEncoder());
   }
 
   @Bean
@@ -90,7 +92,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
   @Bean
   JwtEncoder jwtEncoder() {
-    JWK jwk = new RSAKey.Builder(this.publicKey).privateKey(this.privateKey).build();
+    JWK jwk = new RSAKey.Builder(this.publicKey).privateKey(this.secretKey).build();
     JWKSource<SecurityContext> jwks = new ImmutableJWKSet<>(new JWKSet(jwk));
     return new NimbusJwtEncoder(jwks);
   }

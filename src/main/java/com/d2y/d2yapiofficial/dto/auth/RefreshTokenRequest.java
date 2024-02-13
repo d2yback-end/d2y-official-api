@@ -1,4 +1,4 @@
-package com.d2y.d2yapiofficial.dto;
+package com.d2y.d2yapiofficial.dto.auth;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;

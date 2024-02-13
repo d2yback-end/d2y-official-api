@@ -2,8 +2,11 @@ package com.d2y.d2yapiofficial.services;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import javax.persistence.EntityExistsException;
 import javax.persistence.EntityNotFoundException;
@@ -19,17 +22,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Service;
 
-import com.d2y.d2yapiofficial.dto.AuthResponse;
-import com.d2y.d2yapiofficial.dto.LoginRequest;
-import com.d2y.d2yapiofficial.dto.RefreshTokenRequest;
-import com.d2y.d2yapiofficial.dto.RegisterRequest;
+import com.d2y.d2yapiofficial.dto.auth.AuthResponse;
+import com.d2y.d2yapiofficial.dto.auth.LoginRequest;
+import com.d2y.d2yapiofficial.dto.auth.RefreshTokenRequest;
+import com.d2y.d2yapiofficial.dto.auth.RegisterRequest;
+import com.d2y.d2yapiofficial.dto.privilege.PrivilegeDTO;
+import com.d2y.d2yapiofficial.dto.role.RoleDTO;
 import com.d2y.d2yapiofficial.exceptions.ForbiddenException;
 import com.d2y.d2yapiofficial.models.NotificationEmail;
+import com.d2y.d2yapiofficial.models.RolePrivilege;
 import com.d2y.d2yapiofficial.models.Token;
 import com.d2y.d2yapiofficial.models.User;
+import com.d2y.d2yapiofficial.models.UserRole;
+import com.d2y.d2yapiofficial.repositories.RolePrivilegeRepository;
 import com.d2y.d2yapiofficial.repositories.TokenRepository;
 import com.d2y.d2yapiofficial.repositories.UserRepository;
+import com.d2y.d2yapiofficial.repositories.UserRoleRepository;
 import com.d2y.d2yapiofficial.security.JwtProvider;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,13 +53,16 @@ public class AuthService {
   private final MailService mailService;
   private final TokenRepository tokenRepository;
   private final UserRepository userRepository;
+  private final UserRoleRepository userRoleRepository;
+  private final RolePrivilegeRepository rolePrivilegeRepository;
   private final RefreshTokenService refreshTokenService;
   private final PasswordEncoder passwordEncoder;
   private final AuthenticationManager authenticationManager;
   private final JwtProvider jwtProvider;
 
+
   @Transactional
-  public void registerUser(RegisterRequest registrationDto) {
+  public void registerUser(RegisterRequest registrationDto) throws Exception {
     try {
       validateRegistrationInput(registrationDto);
 
@@ -70,16 +84,14 @@ public class AuthService {
       validateUserEnabled(user, loginRequest);
 
       Authentication authenticate = authenticationManager
-          .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
-              loginRequest.getPassword()));
-
+              .authenticate(new UsernamePasswordAuthenticationToken(loginRequest.getEmail(),
+                      loginRequest.getPassword()));
       SecurityContextHolder.getContext().setAuthentication(authenticate);
-      String token = jwtProvider.generateToken(authenticate);
 
-      return AuthResponse.builder()
-          .accessToken(token)
-          .refreshToken(refreshTokenService.generateRefreshToken().getToken())
-          .build();
+      user.setLastLogin(new Timestamp(System.currentTimeMillis()));
+      userRepository.save(user);
+
+      return createAuthResponse(user, authenticate);
     } catch (Exception ex) {
       log.info(ex.getMessage());
       ex.printStackTrace();
@@ -94,9 +106,9 @@ public class AuthService {
       String token = jwtProvider.generateTokenWithUserName(refreshTokenRequest.getEmail());
 
       return AuthResponse.builder()
-          .accessToken(token)
-          .refreshToken(refreshTokenService.generateRefreshToken().getToken())
-          .build();
+              .accessToken(token)
+              .refreshToken(refreshTokenService.generateRefreshToken().getToken())
+              .build();
     } catch (Exception ex) {
       log.info(ex.getMessage());
       ex.printStackTrace();
@@ -117,7 +129,7 @@ public class AuthService {
 
     if (!isStrongPassword(registrationDto.getPassword())) {
       throw new ValidationException(
-          "Password must contain a combination of uppercase letters, lowercase letters, numbers, and special characters.");
+              "Password must contain a combination of uppercase letters, lowercase letters, numbers, and special characters.");
     }
   }
 
@@ -127,8 +139,9 @@ public class AuthService {
     user.setEmail(registrationDto.getEmail());
     user.setPassword(passwordEncoder.encode(registrationDto.getPassword()));
     user.setCreatedOn(new Timestamp(System.currentTimeMillis()));
-    user.setLastModifiedOn(new Timestamp(System.currentTimeMillis()));
-    user.setActive(true);
+    user.setUpdatedOn(new Timestamp(System.currentTimeMillis()));
+    user.setRegistrationDate(new Timestamp(System.currentTimeMillis()));
+    user.setActive(false);
     user.setEnabled(false);
     return user;
   }
@@ -137,7 +150,7 @@ public class AuthService {
     return password.matches("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[@#$%!*+=_^&\\-\\[\\]{}\\/?.,><\\\\|]).{8,}$");
   }
 
-  private void sendVerificationEmail(User user) {
+  private void sendVerificationEmail(User user) throws JsonProcessingException {
     NotificationEmail mailMessage = createNotificationEmail(user);
     mailService.sendMail(mailMessage);
   }
@@ -177,7 +190,7 @@ public class AuthService {
 
   private User getUserByEmail(String email) {
     return userRepository.findByEmail(email)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
   }
 
   private void validateUserEnabled(User user, LoginRequest loginRequest) {
@@ -192,13 +205,54 @@ public class AuthService {
 
   private boolean isPasswordValid(String rawPassword, String hashedPasswordFromDb) {
     return passwordEncoder.matches(rawPassword, hashedPasswordFromDb);
+  }
+
+  public RoleDTO convertRoleDTO(UserRole userRole) {
+    return RoleDTO.builder()
+            .roleId(userRole.getRoleId().getCategoryCodeId())
+            .roleName(userRole.getRoleId().getCodeName())
+            .build();
 
   }
+
+  private List<PrivilegeDTO> convertPrivilegeDTO(List<UserRole> listUserRole) {
+    List<PrivilegeDTO> listPrivilege = new ArrayList<>();
+    for (UserRole role : listUserRole) {
+      List<RolePrivilege> rolePrivilege = rolePrivilegeRepository.getListRolePrivilege(role.getRoleId());
+      for (RolePrivilege rPrivilege : rolePrivilege) {
+        PrivilegeDTO buildRolePrivilege = PrivilegeDTO.builder()
+                .privilegeId(rPrivilege.getPrivilegeId().getCategoryCodeId())
+                .privilegeName(rPrivilege.getPrivilegeId().getCodeName())
+                .build();
+        if (!listPrivilege.contains(buildRolePrivilege)) {
+          listPrivilege.add(buildRolePrivilege);
+        }
+      }
+    }
+    return listPrivilege;
+  }
+
+  private AuthResponse createAuthResponse(User user, Authentication authentication) {
+    String token = jwtProvider.generateToken(authentication);
+    List<UserRole> listRole = userRoleRepository.findByIdAndActiveList(user);
+
+    return AuthResponse.builder()
+            .userId(user.getUserId())
+            .email(user.getEmail())
+            .username(user.getUsername())
+            .listRole(listRole.stream().map(this::convertRoleDTO).collect(Collectors.toList()))
+            .listPrivilege(convertPrivilegeDTO(listRole))
+            .accessToken(token)
+            .refreshToken(refreshTokenService.generateRefreshToken().getToken())
+            .build();
+  }
+
+  // Another function
 
   public boolean verifyAccount(String token) {
     Optional<Token> verificationToken = tokenRepository.findByToken(token);
     return fetchUserAndEnable(
-        verificationToken.orElseThrow(() -> new ValidationException("Invalid Verification Token")));
+            verificationToken.orElseThrow(() -> new ValidationException("Invalid Verification Token")));
   }
 
   private boolean fetchUserAndEnable(Token verificationToken) {
@@ -208,9 +262,10 @@ public class AuthService {
 
     Long userId = verificationToken.getUser().getUserId();
     User user = userRepository.findById(userId)
-        .orElseThrow(() -> new EntityNotFoundException("User not found"));
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
 
     user.setEnabled(true);
+    user.setActive(true);
     userRepository.save(user);
     tokenRepository.delete(verificationToken);
     return true;
@@ -220,6 +275,6 @@ public class AuthService {
   public User getCurrentUser() {
     Jwt principal = (Jwt) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     return userRepository.findByEmail(principal.getSubject())
-        .orElseThrow(() -> new EntityNotFoundException("User Not Found"));
+            .orElseThrow(() -> new EntityNotFoundException("User Not Found"));
   }
 }
